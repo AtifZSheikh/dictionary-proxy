@@ -1,13 +1,7 @@
-import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
-import cors from "cors";
 
-const app = express();
-app.use(cors());
-
-// Proxy route to fetch original dictionary pages
-app.get("/proxy", async (req, res) => {
+export default async function handler(req, res) {
   const { source, word } = req.query;
   if (!source || !word) return res.status(400).send("Missing parameters");
 
@@ -23,15 +17,12 @@ app.get("/proxy", async (req, res) => {
 
     const $ = cheerio.load(page);
 
-    // Remove common ad elements and scripts
+    // Remove scripts, ads, banners
     $("script, iframe, .ad, .banner, [class*=promo]").remove();
 
-    res.send($.html());
+    res.status(200).send($.html());
   } catch (err) {
     console.error(err);
     res.status(500).send("Failed to fetch page");
   }
-});
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log("Server running on port " + port));
+}
