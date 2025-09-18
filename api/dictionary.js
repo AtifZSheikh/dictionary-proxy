@@ -11,10 +11,10 @@ export default async function handler(req, res) {
     try {
       const ox = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
       const oxJson = await ox.json();
-      oxfordDef = oxJson[0]?.meanings?.map(m => m.definitions[0].definition).join('; ') || oxfordDef;
+      oxfordDef = oxJson[0]?.meanings?.map(m => m.definitions[0].definition).join("; ") || oxfordDef;
     } catch {}
 
-    // ----- Free Dictionary (dictionaryapi.dev) -----
+    // ----- Free Dictionary -----
     let freeDefs = [];
     try {
       const freeApi = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       freeDefs = freeJson[0]?.meanings?.map(m => m.definitions[0].definition) || [];
     } catch {}
 
-    // ----- Thesaurus / Synonyms (Datamuse) -----
+    // ----- Thesaurus (Datamuse) -----
     let synonyms = [];
     try {
       const synRes = await fetch(`https://api.datamuse.com/words?rel_syn=${word}`);
@@ -31,22 +31,28 @@ export default async function handler(req, res) {
       if (synonyms.length === 0) synonyms = ["No synonyms found"];
     } catch {}
 
-    // ----- Urban Dictionary (slang) -----
+    // ----- Urban Dictionary -----
     let urbanDefs = [];
     try {
       const urban = await fetch(`https://api.urbandictionary.com/v0/define?term=${word}`).then(r => r.json());
       urbanDefs = urban.list?.slice(0,3).map(d => d.definition) || [];
     } catch {}
 
-    // ----- Wiktionary (scrape HTML) -----
+    // ----- Wiktionary (English) -----
     let wikiDef = "No definition found";
     try {
       const wikiPage = await fetch(`https://en.wiktionary.org/wiki/${word}`).then(r => r.text());
       const $ = cheerio.load(wikiPage);
-      wikiDef = $("ol li").first().text().trim() || wikiDef;
+      const englishHeader = $("span#English").parent();
+      let defs = [];
+      englishHeader.nextAll("ol").each((i, el) => {
+        const text = $(el).find("li").first().text().trim();
+        if(text) defs.push(text);
+      });
+      wikiDef = defs[0] || wikiDef;
     } catch {}
 
-    // ----- Cambridge (scrape) -----
+    // ----- Cambridge -----
     let cambridgeDef = "No definition found";
     try {
       const camPage = await fetch(`https://dictionary.cambridge.org/dictionary/english/${word}`, { headers: { "User-Agent": "Mozilla/5.0" } }).then(r => r.text());
@@ -54,7 +60,32 @@ export default async function handler(req, res) {
       cambridgeDef = $c(".def.ddef_d.db").first().text().trim() || cambridgeDef;
     } catch {}
 
-    // ----- Combine into modern HTML -----
+    // ----- Merriam-Webster -----
+    let mwDef = "No definition found";
+    try {
+      const mwApiKey = process.env.MW_API_KEY; // set in Vercel env
+      const mwRes = await fetch(`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${mwApiKey}`);
+      const mwJson = await mwRes.json();
+      mwDef = mwJson[0]?.shortdef?.join("; ") || mwDef;
+    } catch {}
+
+    // ----- Hindi Dictionary (Shabdkosh) -----
+    let hindiDef = "No Hindi definition found";
+    try {
+      const shabdkoshPage = await fetch(`https://www.shabdkosh.com/dictionary/english-hindi/${word}`).then(r => r.text());
+      const $ = cheerio.load(shabdkoshPage);
+      hindiDef = $(".dictionary_results div:first-child").text().trim() || hindiDef;
+    } catch {}
+
+    // ----- Urdu Dictionary (Rekhta / UrduPoint) -----
+    let urduDef = "No Urdu definition found";
+    try {
+      const urduPage = await fetch(`https://www.urdupoint.com/dictionary/english-urdu/${word}.html`).then(r => r.text());
+      const $ = cheerio.load(urduPage);
+      urduDef = $(".meaning").first().text().trim() || urduDef;
+    } catch {}
+
+    // ----- Build HTML -----
     const html = `
     <html>
       <head>
@@ -62,7 +93,7 @@ export default async function handler(req, res) {
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <style>
           body { font-family:'Roboto', sans-serif; padding:15px; background:#f2f2f2; line-height:1.5; }
-          h1 { text-align:center; color:#2196F3; }
+          h1 { text-align:center; color:#2196F3; margin-bottom:15px; }
           .card { background:white; padding:15px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.2); margin:10px 0; }
           .card h2 { color:#333; margin-bottom:8px; }
           .card p { color:#555; }
@@ -101,10 +132,25 @@ export default async function handler(req, res) {
           <h2>Cambridge</h2>
           <p>${cambridgeDef}</p>
         </div>
+
+        <div class="card">
+          <h2>Merriam-Webster</h2>
+          <p>${mwDef}</p>
+        </div>
+
+        <div class="card">
+          <h2>Hindi</h2>
+          <p>${hindiDef}</p>
+        </div>
+
+        <div class="card">
+          <h2>Urdu</h2>
+          <p>${urduDef}</p>
+        </div>
+
       </body>
     </html>
     `;
-
     res.status(200).send(html);
   } catch(err) {
     console.error(err);
