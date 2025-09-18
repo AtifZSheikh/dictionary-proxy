@@ -1,11 +1,16 @@
 {
-  "name": "dictionary-proxy",
+  "name": "ultimate-dictionary",
   "version": "1.0.0",
+  "description": "Multi-language dictionary app with Puppeteer scraping",
+  "main": "dictionary.js",
   "type": "module",
+  "scripts": {
+    "start": "node dictionary.js"
+  },
   "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
     "express": "^4.18.2",
     "node-fetch": "^3.3.2",
-    "cheerio": "^1.0.0-rc.12",
-    "cors": "^2.8.5"
+    "puppeteer": "^21.3.8"
   }
 }
