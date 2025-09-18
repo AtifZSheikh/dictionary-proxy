@@ -1,0 +1,7 @@
+app = "AZS-Dict"
+
+[build]
+  builder = "paketobuildpacks/builder:base"
+
+[env]
+  MW_API_KEY = "your_api_key_placeholder" # This will be overridden by secret 
