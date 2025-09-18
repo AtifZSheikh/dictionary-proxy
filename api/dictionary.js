@@ -6,7 +6,7 @@ import puppeteer from "puppeteer";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Helper functions
+// --------- Puppeteer Scraping Functions ---------
 async function fetchWiktionary(word){
   try {
     const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] });
@@ -74,7 +74,6 @@ async function fetchMW(word){
   }
 }
 
-// Other free dictionaries
 async function fetchFreeDict(word){
   try {
     const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -95,7 +94,6 @@ async function fetchThesaurus(word){
   }
 }
 
-// Urban dictionary
 async function fetchUrban(word){
   try {
     const res = await fetch(`https://api.urbandictionary.com/v0/define?term=${word}`).then(r => r.json());
@@ -105,7 +103,6 @@ async function fetchUrban(word){
   }
 }
 
-// Cambridge dictionary
 async function fetchCambridge(word){
   try {
     const page = await fetch(`https://dictionary.cambridge.org/dictionary/english/${word}`, { headers: { "User-Agent": "Mozilla/5.0" }}).then(r=>r.text());
@@ -117,12 +114,11 @@ async function fetchCambridge(word){
   }
 }
 
-// API endpoint
+// --------- API Route ---------
 app.get("/api/dictionary", async (req,res)=>{
   const word = req.query.word;
   if(!word) return res.status(400).send("Missing 'word' query param");
 
-  // Fetch all definitions in parallel
   const [wiki,hindi,urdu,mw,freeDict,thesaurus,urban,cambridge] = await Promise.all([
     fetchWiktionary(word),
     fetchHindi(word),
@@ -134,7 +130,6 @@ app.get("/api/dictionary", async (req,res)=>{
     fetchCambridge(word)
   ]);
 
-  // Build simple HTML response
   const html = `
   <html>
   <head>
@@ -150,7 +145,6 @@ app.get("/api/dictionary", async (req,res)=>{
   </head>
   <body>
     <h1>${word}</h1>
-
     <div class="card"><h2>Wiktionary</h2><p>${wiki}</p></div>
     <div class="card"><h2>Hindi</h2><p>${hindi}</p></div>
     <div class="card"><h2>Urdu</h2><p>${urdu}</p></div>
@@ -159,7 +153,6 @@ app.get("/api/dictionary", async (req,res)=>{
     <div class="card"><h2>Thesaurus (Synonyms)</h2><ul class="synonyms">${thesaurus.map(s=>`<li>${s}</li>`).join('')}</ul></div>
     <div class="card"><h2>Urban Dictionary</h2>${urban.map(d=>`<p>${d}</p>`).join('')}</div>
     <div class="card"><h2>Cambridge</h2><p>${cambridge}</p></div>
-
   </body>
   </html>
   `;
@@ -167,42 +160,5 @@ app.get("/api/dictionary", async (req,res)=>{
   res.status(200).send(html);
 });
 
-// Start server
-app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));          <h2>Urban Dictionary</h2>
-          ${urbanDefs.map(d => `<p>${d}</p>`).join('')}
-        </div>
-
-        <div class="card">
-          <h2>Wiktionary</h2>
-          <p>${wikiDef}</p>
-        </div>
-
-        <div class="card">
-          <h2>Cambridge</h2>
-          <p>${cambridgeDef}</p>
-        </div>
-
-        <div class="card">
-          <h2>Merriam-Webster</h2>
-          <p>${mwDef}</p>
-        </div>
-
-        <div class="card">
-          <h2>Hindi</h2>
-          <p>${hindiDef}</p>
-        </div>
-
-        <div class="card">
-          <h2>Urdu</h2>
-          <p>${urduDef}</p>
-        </div>
-
-      </body>
-    </html>
-    `;
-    res.status(200).send(html);
-  } catch(err) {
-    console.error(err);
-    res.status(500).send("Failed to fetch word data");
-  }
-}
+// --------- Start Server ---------
+app.listen(PORT,()=>console.log(`Server running on port ${PORT}`));
